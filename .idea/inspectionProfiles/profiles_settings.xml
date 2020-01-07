@@ -1,5 +1,10 @@
 <component name="InspectionProjectProfileManager">
   <settings>
+<<<<<<< Updated upstream
     <option name="PROJECT_PROFILE" />
+=======
+    <option name="USE_PROJECT_PROFILE" value="false" />
+    <version value="1.0" />
+>>>>>>> Stashed changes
   </settings>
 </component>
