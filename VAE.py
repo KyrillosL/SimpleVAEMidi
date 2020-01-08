@@ -51,9 +51,9 @@ class Vae:
         self.models = (self.encoder, self.decoder)
 
         self.path = '/Users/Cyril_Musique/Documents/Cours/Dataset_NO_GD/dataset_csv/midi_files/'
-        #lakh_path = '/Users/Cyril_Musique/Documents/Cours/M2/SimpleVAEMIDI/Big_Data_Set/1/'
+        self.lakh_path = '/home/kyrillos/CODE/VAEMIDI/clean_midi/'
         filepath = '/Users/Cyril_Musique/Documents/Cours/Dataset_NO_GD/dataset_csv/dataset.csv'
-        self.metadata = pd.read_csv(filepath)
+        #self.metadata = pd.read_csv(filepath)
 
 
 
@@ -223,8 +223,9 @@ class Vae:
 
 
     def load_data_for_training(self):
+        test_new_feature= []
         features = []
-
+        '''
         # Iterate through each midi file and extract the features
         for index, row in self.metadata.iterrows():
             path_midi_file = self.path+ str(row["File"])
@@ -244,24 +245,36 @@ class Vae:
                     features.append([data, class_label])
         '''
         #Itarating through the lakh midi dataset:
-        for subdir, dirs, files in os.walk(lakh_path):
+        #len(list(filter(os.path.isdir, os.listdir(self.lakh_path))))
+        #num_size =  sum(os.path.isdir(i) for i in os.listdir(self.lakh_path))
+        path, dirs, files = next(os.walk(self.lakh_path))
+        num_size = len(dirs)
+        current_folder = 0
+        num_files = 0
+        for subdir, dirs, files in os.walk(self.lakh_path):
+
             for file in files:
-                if file !=".DS_Store":
-                    #print(os.path.join(subdir, file))
-                    class_label=0
-                    try:
+                if num_files<2:
+                    if file !=".DS_Store":
+                        print(os.path.join(subdir, file))
+                        class_label=0
+                        #try:
                         midi_data = pretty_midi.PrettyMIDI(subdir+"/"+file)
                         for instrument in midi_data.instruments:
                             instrument.is_drum=False
                         if len(midi_data.instruments)>0:
-                            data  = midi_data.get_piano_roll(fs=8)
-                            data.resize(10000)
+                            data  = midi_data.get_piano_roll(fs=8).astype(object)
+                            #data.flatten()
+                            data.resize(data.size, refcheck=False)
+                            #data.resize(3968, refcheck=False)
                             features.append([data, class_label])
-                            #print("ADDED")
-                    except:
-                        print("An exception occurred")
+                            num_files+=1
+                        #except:
+                        #    print("An exception occurred")
+            current_folder+=1
+            print("Done ", num_files," from ",current_folder," folders on ",num_size )
     
-        '''
+
 
 
         # Convert into a Panda dataframe
@@ -270,6 +283,8 @@ class Vae:
         print('Finished feature extraction from ', len(featuresdf), ' files')
 
         # Convert features & labels into numpy arrays
+        listed_feature =featuresdf.feature.tolist()
+
         X = np.array(featuresdf.feature.tolist())
         y = np.array(featuresdf.class_label.tolist())
 
@@ -280,7 +295,8 @@ class Vae:
         x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 42)
 
 
-        midi_file_size = x_train.shape[1]
+        #print(x_train.shape)
+        #midi_file_size = x_train.shape
 
         return   x_train, y_train, x_test, y_test
 
