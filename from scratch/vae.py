@@ -23,12 +23,21 @@ from keras.datasets import mnist
 from keras.losses import mse, binary_crossentropy
 from keras.utils import plot_model
 from keras import backend as K
-
+from keras.optimizers import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import os
 
+import pretty_midi
+from sklearn.model_selection import train_test_split
+import pandas as pd
+
+
+intermediate_dim = 512
+batch_size = 64
+latent_dim = 4
+epochs = 100
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -113,7 +122,7 @@ def plot_results(models,
     plt.show()
 
 
-# MNIST dataset
+'''
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
 image_size = x_train.shape[1]
@@ -123,12 +132,127 @@ x_test = np.reshape(x_test, [-1, original_dim])
 x_train = x_train.astype('float32') / 255
 x_test = x_test.astype('float32') / 255
 
+'''
+
+print("LOADING DATA FOR TRAINING...")
+features = []
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset/0"
+path, dirs, files = next(os.walk(path_to_load))
+num_size = len(dirs)
+current_folder = 0
+num_files = 0
+res = 2048 #min 8
+
+size = 465 * int(res / 8)
+for subdir, dirs, files in os.walk(path_to_load):
+    for file in files:
+        if num_files < 5000:
+            if file != ".DS_Store":
+                # print(os.path.join(subdir, file))
+                class_label = 0
+                # try:
+                midi_data = pretty_midi.PrettyMIDI(subdir + "/" + file)
+                for instrument in midi_data.instruments:
+                    instrument.is_drum = False
+                if len(midi_data.instruments) > 0:
+                    data = midi_data.get_piano_roll(fs=res)[35:50, :]
+
+                    flattened = data.flatten()
+                    flattened = flattened.astype(dtype=bool)
+                    # data.resize(data.size, refcheck=False)
+                    # np.resize(data, (1,465)
+                    final_array = []
+                    if data.size <= size:
+                        remaining_zero = size - data.size
+                        final_array = np.pad(flattened, (0, remaining_zero), mode='constant', constant_values=0)
+                        if np.count_nonzero(final_array) == 0:
+                            print("0 IN DATASET")
+                        features.append([final_array, class_label])
+
+                    else:
+                        remaining_zero = data.size - size
+                        final_array = flattened[0:flattened.size - remaining_zero]
+                        if np.count_nonzero(final_array) == 0:
+                            print("0 IN DATASET")
+                        features.append([final_array, class_label])
+
+                    num_files += 1
+                # except:
+                #    print("An exception occurred")
+    current_folder += 1
+    print("Done ", num_files, " from ", current_folder, " folders on ", num_size)
+
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset/100"
+path, dirs, files = next(os.walk(path_to_load))
+num_size = len(dirs)
+current_folder = 0
+num_files = 0
+for subdir, dirs, files in os.walk(path_to_load):
+    for file in files:
+        if num_files < 5000:
+            if file != ".DS_Store":
+                # print(os.path.join(subdir, file))
+                class_label = 1
+                # try:
+                midi_data = pretty_midi.PrettyMIDI(subdir + "/" + file)
+                for instrument in midi_data.instruments:
+                    instrument.is_drum = False
+                if len(midi_data.instruments) > 0:
+                    data = midi_data.get_piano_roll(fs=res)[35:50, :]
+
+                    flattened = data.flatten()
+                    flattened = flattened.astype(dtype=bool)
+                    # data.resize(data.size, refcheck=False)
+                    # np.resize(data, (1,465)
+                    final_array = []
+                    if data.size <= size:
+                        remaining_zero = size - data.size
+                        final_array = np.pad(flattened, (0, remaining_zero), mode='constant', constant_values=0)
+                        if np.count_nonzero(final_array) == 0:
+                            print("0 IN DATASET")
+                        features.append([final_array, class_label])
+
+                    else:
+                        remaining_zero = data.size - size
+                        final_array = flattened[0:flattened.size - remaining_zero]
+                        if np.count_nonzero(final_array) == 0:
+                            print("0 IN DATASET")
+
+                        features.append([final_array, class_label])
+
+                    num_files += 1
+                # except:
+                #    print("An exception occurred")
+    current_folder += 1
+    print("Done ", num_files, " from ", current_folder, " folders on ", num_size)
+
+# Convert into a Panda dataframe
+featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
+
+print('Finished feature extraction from ', len(featuresdf), ' files')
+
+# Convert features & labels into numpy arrays
+listed_feature = featuresdf.feature.tolist()
+
+X = np.array(featuresdf.feature.tolist())
+y = np.array(featuresdf.class_label.tolist())
+
+print(X.shape, y.shape)
+# split the dataset
+
+
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+midi_file_size = x_train.shape[1]
+original_dim = midi_file_size
+#x_train = np.reshape(x_train, [-1, original_dim])
+#x_test = np.reshape(x_test, [-1, original_dim])
+#x_train = x_train.astype('float64') / 100
+#x_test = x_test.astype('float64') / 100
+
 # network parameters
 input_shape = (original_dim, )
-intermediate_dim = 512
-batch_size = 128
-latent_dim = 2
-epochs = 50
+
 
 # VAE model = encoder + decoder
 # build encoder model
@@ -173,11 +297,11 @@ if __name__ == '__main__':
     data = (x_test, y_test)
 
     # VAE loss = mse_loss or xent_loss + kl_loss
-    if args.mse:
-        reconstruction_loss = mse(inputs, outputs)
-    else:
-        reconstruction_loss = binary_crossentropy(inputs,
-                                                  outputs)
+    #if args.mse:
+    reconstruction_loss = mse(inputs, outputs)
+    #else:
+    #    reconstruction_loss = binary_crossentropy(inputs,
+                                                  #outputs)
 
     reconstruction_loss *= original_dim
     kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
@@ -185,7 +309,8 @@ if __name__ == '__main__':
     kl_loss *= -0.5
     vae_loss = K.mean(reconstruction_loss + kl_loss)
     vae.add_loss(vae_loss)
-    vae.compile(optimizer='adam')
+    opt = Adam(lr=0.0005)  # 0.001 was the default, so try a smaller one
+    vae.compile(optimizer=opt,  metrics=['accuracy'])
     vae.summary()
     plot_model(vae,
                to_file='vae_mlp.png',
@@ -195,11 +320,19 @@ if __name__ == '__main__':
         vae.load_weights(args.weights)
     else:
         # train the autoencoder
-        vae.fit(x_train,
+        score=vae.fit(x_train,
                 epochs=epochs,
+                verbose=1,
                 batch_size=batch_size,
                 validation_data=(x_test, None))
         vae.save_weights('vae_mlp_mnist.h5')
+
+        score2 = vae.evaluate(x_test, None, verbose=1)
+        print('Score', score.history)
+        print('Score', score2)
+
+
+
 
     plot_results(models,
                  data,
