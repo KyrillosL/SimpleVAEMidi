@@ -24,10 +24,10 @@ from keras.layers import Dense,Activation, Dropout
 
 class Vae:
     def __init__(self):
-        self.epochs = 20
-        self.batch_size = 64
+        self.epochs = 3
+        self.batch_size = 128
         self.intermediate_dim = 512
-        self.latent_dim = 2
+        self.latent_dim = 4
 
         print("LOADING VAE MODEL...")
 
@@ -143,11 +143,11 @@ class Vae:
         reconstruction_loss = mse(inputs, outputs)
         #midi_file_size = midi_file_size*midi_file_size
         #reconstruction_loss *= midi_file_size
-        kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
-        kl_loss = K.sum(kl_loss, axis=-1)
-        kl_loss *= -0.5
-        vae_loss = K.mean(reconstruction_loss )#+ kl_loss)
-        vae.add_loss(vae_loss)
+        #kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
+        #kl_loss = K.sum(kl_loss, axis=-1)
+        #kl_loss *= -0.5
+        #vae_loss = K.mean(reconstruction_loss )#+ kl_loss)
+        #vae.add_loss(vae_loss)
 
 
         #loss = 'binary_crossentropy'
@@ -155,11 +155,11 @@ class Vae:
 
 
         #opt = Adam(lr=0.00005)  # 0.001 was the default, so try a smaller one
-        opt = Adam(lr=0.0005)  # 0.001 was the default, so try a smaller one
-        #vae.compile(optimizer=opt, loss=loss)
+        opt = Adam(lr=0.00005)  # 0.001 was the default, so try a smaller one
+        vae.compile(optimizer=opt, loss=loss)
         #vae.compile(optimizer='Adam', loss=loss)
 
-        vae.compile(optimizer='adam')
+        #vae.compile(optimizer='adam')
         vae.summary()
         #plot_model(vae,to_file='vae_mlp.png',show_shapes=True)
 
@@ -303,12 +303,12 @@ class Vae:
         num_size = len(dirs)
         current_folder = 0
         num_files = 0
-        res = 8
+        res = 128
 
-        size = 465*int(res/8)
+        size = 3968*int(res/8)#
         for subdir, dirs, files in os.walk(path_to_load):
             for file in files:
-                if num_files < 1000:
+                if num_files < 5000:
                     if file != ".DS_Store":
                         #print(os.path.join(subdir, file))
                         class_label = 0
@@ -317,7 +317,7 @@ class Vae:
                         for instrument in midi_data.instruments:
                             instrument.is_drum = False
                         if len(midi_data.instruments) > 0:
-                            data = midi_data.get_piano_roll(fs=res)[35:50,:]
+                            data = midi_data.get_piano_roll(fs=res)#[35:50,:]
 
                             flattened = data.flatten()
                                 # data.resize(data.size, refcheck=False)
@@ -353,7 +353,7 @@ class Vae:
         num_files = 0
         for subdir, dirs, files in os.walk(path_to_load):
             for file in files:
-                if num_files < 1000:
+                if num_files < 5000:
                     if file != ".DS_Store":
                         #print(os.path.join(subdir, file))
                         class_label = 1
@@ -362,7 +362,7 @@ class Vae:
                         for instrument in midi_data.instruments:
                             instrument.is_drum = False
                         if len(midi_data.instruments) > 0:
-                            data = midi_data.get_piano_roll(fs=res)[35:50, :]
+                            data = midi_data.get_piano_roll(fs=res)#[35:50, :]
                             flattened = data.flatten()
                             # data.resize(data.size, refcheck=False)
                             # np.resize(data, (1,465)
@@ -433,11 +433,11 @@ class Vae:
 
         # train the autoencoder
         self.vae.fit(x_train,
-                #x_train,
+                x_train,
                 epochs=self.epochs,
                 batch_size=self.batch_size,
-                #validation_data=(x_test, x_test))
-                validation_data=(x_test, None))
+                validation_data=(x_test, x_test))
+                #validation_data=(x_test, None))
         print("OUTPUT", self.vae.output)
         self.vae.save_weights('vae_midi.h5')
 

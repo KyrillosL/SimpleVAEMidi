@@ -1,7 +1,8 @@
-import VAE
+import VAE_groove
 
 
-vae = VAE.Vae()
+
+vae = VAE_groove.Vae()
 
 vae.train()
 
