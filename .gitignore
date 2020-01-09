@@ -7574,3 +7574,5 @@ venv/
 __pychache__/
 
 .idea/
+
+from scratch/vae_mlp_mnist.h5
