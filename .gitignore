@@ -7575,4 +7575,4 @@ __pychache__/
 
 .idea/
 
-from scratch/vae_mlp_mnist.h5
+from\ scratch/vae_mlp_mnist.h5
