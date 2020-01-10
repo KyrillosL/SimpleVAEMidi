@@ -41,12 +41,12 @@ batch_size = 128
 latent_dim = 2
 epochs = 10
 random_state = 42
-dataset_size = 5000
+dataset_size = 10000
 list_files_name= []
 file_shuffle=[]
 test_size=0.25
 
-res =  512 # min 8
+res =  2048 # min 8
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -163,12 +163,10 @@ def load_data(path, class_label, index_filename ):
 print("LOADING DATA FOR TRAINING...")
 features = []
 
-#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
-path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/to_compare_0"
-
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/0"
 load_data(path_to_load, 0,   0)
-#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
-#load_data(path_to_load,1,  dataset_size)
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
+load_data(path_to_load,1,  dataset_size)
 
 # Convert into a Panda dataframe
 featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
@@ -276,7 +274,7 @@ if __name__ == '__main__':
         print("LOADING WEIGHTS")
         vae.load_weights(args.weights)
     else:
-        '''
+
         # train the autoencoder
         score=vae.fit(x_train,
                 epochs=epochs,
@@ -288,7 +286,7 @@ if __name__ == '__main__':
         score2 = vae.evaluate(x_test, None, verbose=1)
         print('Score', score.history)
         print('Score', score2)
-        '''
+
 
 
 

@@ -39,18 +39,15 @@ from sklearn.utils import shuffle
 intermediate_dim = 512
 batch_size = 128
 
-latent_dim = 4
-epochs = 1
+latent_dim = 2
+epochs = 10
 random_state = 42
-dataset_size = 4
+dataset_size = 10000
 
 list_files_name= []
 file_shuffle=[]
 test_size=0.25
-
-
-
-res =  512 # min 8
+res =  2048 # min 8
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -95,7 +92,8 @@ def plot_results(models,
     z_mean, _, _ = encoder.predict(x_test,
                                    batch_size=batch_size)
     plt.figure(figsize=(12, 10))
-    plt.scatter(z_mean[:, 0], z_mean[:, 1], c=y_test)
+
+    plt.scatter(z_mean[:, 0], z_mean[:, 1], c=y_test==0)
     plt.colorbar()
     plt.xlabel("z[0]")
     plt.ylabel("z[1]")
@@ -110,9 +108,9 @@ def plot_results(models,
     print(final )
 
    # print("ICI ", file_shuffle[:int(dataset_size * test_size)])
-    for i, txt in enumerate(file_shuffle[ :int(dataset_size*2 * test_size)]):
+    #for i, txt in enumerate(file_shuffle[ :int(dataset_size*2 * test_size)]):
         #print("i ", i)
-        plt.annotate(txt,(z_mean[i,0], z_mean[i,1]))
+        #plt.annotate(txt,(z_mean[i,0], z_mean[i,1]))
 
 
     plt.show()
@@ -180,9 +178,9 @@ load_data(path_to_load, 0,   0)
 #load_data(path_to_load,1,  dataset_size)
 '''
 
-path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/0"
 load_data(path_to_load, 0,   0)
-path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
 load_data(path_to_load,1,  dataset_size)
 
 

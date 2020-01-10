@@ -23,18 +23,20 @@ from sklearn.utils import shuffle
 
 class Vae:
     def __init__(self):
+        print("ici")
         self.epochs = 10
         self.batch_size = 128
         self.intermediate_dim = 512
         self.latent_dim = 2
         self.random_state = 42
-        self.dataset_size = 5000
+        self.dataset_size = 10000
         self.list_files_name= []
         self.file_shuffle=[]
         self.test_size=0.25
-        self.res =  512 # min 8
+        self.res =  2048 # min 8
 
-        path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
+        #path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
+        path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
         data_to_initialize_model = self.load_data(path_midi_file_to_initialize_model, 0, 2)
 
         self.original_dim = data_to_initialize_model[0].shape[1]
@@ -55,10 +57,9 @@ class Vae:
         return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
 
-    def get_coord(self,data_to_plot,batch_size=128):
+    def get_coord(self,data_to_plot,batch_size=128, show_annotation=False):
 
         data_to_plot_x,data_to_plot_y = data_to_plot
-
         # display a 2D plot of the digit classes in the latent space
         z_mean, _, _ = self.encoder.predict(data_to_plot_x,batch_size=batch_size)
         plt.figure(figsize=(12, 10))
@@ -68,12 +69,12 @@ class Vae:
         plt.ylabel("z[1]")
         #print(len(z_mean))
 
-       # print("ICI ", file_shuffle[:int(dataset_size * test_size)])
-        #for i, txt in enumerate(file_shuffle[ :int(dataset_size*2 * test_size)]):
-            #print("i ", i)
-            #plt.annotate(txt,(z_mean[i,0], z_mean[i,1]))
+        if show_annotation:
+            print("DANS LANOATIONS")
+            for i, txt in enumerate(self.list_files_name): #pour toute la dataset [ :int(dataset_size *2* test_size)]
+                plt.annotate(txt,(z_mean[i,0], z_mean[i,1]))
 
-        #plt.show()
+        plt.show()
         return z_mean
 
 
@@ -127,9 +128,64 @@ class Vae:
         vae.summary()
         return vae, encoder, decoder
 
+    def load_all_data(self,path, class_label, index_filename):
+        features = []
+        path, dirs, files = next(os.walk(path))
+        num_size = len(dirs)
+        current_folder = 0
+        num_files = 0
+
+        size = 465 * int(self.res / 8)
+        for subdir, dirs, files in os.walk(path):
+            for file in files:
+                if num_files < self.dataset_size:
+                    if file != ".DS_Store":
+                        # print(os.path.join(subdir, file))
+                        # try:
+                        midi_data = pretty_midi.PrettyMIDI(subdir + "/" + file)
+                        for instrument in midi_data.instruments:
+                            instrument.is_drum = False
+                        if len(midi_data.instruments) > 0:
+                            data = midi_data.get_piano_roll(fs=self.res)[35:50, :]
+
+                            flattened = data.flatten()
+                            flattened = flattened.astype(dtype=bool)
+
+                            if data.size <= size:
+                                remaining_zero = size - data.size
+                                final_array = np.pad(flattened, (0, remaining_zero), mode='constant', constant_values=0)
+                                if np.count_nonzero(final_array) == 0:
+                                    print("0 IN DATASET")
+                                features.append([final_array, class_label])
+
+                            else:
+                                remaining_zero = data.size - size
+                                final_array = flattened[0:flattened.size - remaining_zero]
+                                if np.count_nonzero(final_array) == 0:
+                                    print("0 IN DATASET")
+                                features.append([final_array, class_label])
+                            # print(file)
+                            #self.list_files_name.insert(index_filename + num_files, file)
+                            self.list_files_name.append( file)
+                            num_files += 1
+                        # except:
+                        #    print("An exception occurred")
+            current_folder += 1
+            print("Done ", num_files, " from ", current_folder, " folders on ", num_size)
+
+            featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
+
+            print('Finished feature extraction from ', len(featuresdf), ' files')
 
 
+            X = np.array(featuresdf.feature.tolist())
+            y = np.array(featuresdf.class_label.tolist())
 
+
+            data_to_plot_x = X
+            data_to_plot_y = y
+
+            return data_to_plot_x, data_to_plot_y
 
     def load_data(self ,path, class_label, index_filename ):
         features = []
@@ -158,7 +214,7 @@ class Vae:
                     print("0 IN DATASET")
                 features.append([final_array, class_label])
 
-            self.list_files_name=path
+            #self.list_files_name=path
 
         # except:
         #    print("An exception occurred")
