@@ -90,7 +90,7 @@ class Vae:
         x_test, y_test = data
         os.makedirs(model_name, exist_ok=True)
 
-        filename = os.path.join(model_name, "vae_mean.png")
+
         # display a 2D plot of the digit classes in the latent space
         z_mean,_,_= encoder.predict(x_test,
                                        batch_size=batch_size)
