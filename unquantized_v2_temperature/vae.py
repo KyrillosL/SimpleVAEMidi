@@ -39,25 +39,18 @@ from sklearn.utils import shuffle
 intermediate_dim = 512
 batch_size = 128
 
-
-
-latent_dim = 2
-epochs = 10
+latent_dim = 4
+epochs = 1
 random_state = 42
-dataset_size = 5000
-
-
-
-
+dataset_size = 4
 
 list_files_name= []
 file_shuffle=[]
 test_size=0.25
 
 
+
 res =  512 # min 8
-
-
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -109,6 +102,7 @@ def plot_results(models,
     plt.savefig(filename)
     #print(len(z_mean))
     nb_elem_per_class = dataset_size*test_size
+
 
 
     to_decode = np.array([[0.5, 0], [1.8, 1]], dtype=np.float32)
@@ -176,6 +170,7 @@ def load_data(path, class_label, index_filename ):
 print("LOADING DATA FOR TRAINING...")
 features = []
 
+
 '''
 #path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
 path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/to_compare_0"
@@ -184,6 +179,7 @@ load_data(path_to_load, 0,   0)
 #path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
 #load_data(path_to_load,1,  dataset_size)
 '''
+
 path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
 load_data(path_to_load, 0,   0)
 path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
@@ -255,7 +251,6 @@ decoder = Model(latent_inputs, outputs, name='decoder')
 decoder.summary()
 plot_model(decoder, to_file='vae_mlp_decoder.png', show_shapes=True)
 
-
 # instantiate VAE model
 outputs = decoder(encoder(inputs)[2])
 vae = Model(inputs, outputs, name='vae_mlp')
@@ -275,7 +270,12 @@ if __name__ == '__main__':
     # VAE loss = mse_loss or xent_loss + kl_loss
     #if args.mse:
 
+
     #reconstruction_loss = binary_crossentropy(inputs,outputs)
+
+    reconstruction_loss = mse(inputs, outputs)
+
+
 
     reconstruction_loss = mse(inputs, outputs)
 
@@ -298,8 +298,8 @@ if __name__ == '__main__':
 
         print("LOADING WEIGHTS")
         vae.load_weights(args.weights)
+    
     else:
-
 
         # train the autoencoder
         score=vae.fit(x_train,
@@ -312,6 +312,8 @@ if __name__ == '__main__':
         score2 = vae.evaluate(x_test, None, verbose=1)
         print('Score', score.history)
         print('Score', score2)
+
+
 
 
 
@@ -439,4 +441,6 @@ def test_to_compare():
             print("IS INSIDE")
         else:
             print("NOT INSIDE")
+
     return True
+
