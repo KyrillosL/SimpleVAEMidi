@@ -1,11 +1,9 @@
-import vae_evaluator
+import cvae_evaluator
 
 
-vae = vae_evaluator.Vae()
+vae = cvae_evaluator.CVae()
 data = vae.load_all_data("/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100" , 1, 0)
 
-
-data += vae.load_all_data("/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/0" , 0, 0)
 
 
 vae.get_coord(data, 128,False)

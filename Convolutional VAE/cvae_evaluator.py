@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-from keras.layers import Lambda, Input, Dense
+from keras.layers import Lambda, Input, Dense, Flatten, Reshape, Conv2DTranspose, Conv2D
 from keras.models import Model
 from keras.datasets import mnist
 from keras.losses import mse, binary_crossentropy
@@ -21,19 +21,24 @@ import pandas as pd
 
 from sklearn.utils import shuffle
 
-class Vae:
+class CVae:
     def __init__(self):
         print("ici")
         self.epochs = 10
-        self.batch_size = 128
-        self.intermediate_dim = 512
+        self.batch_size = 32
+        self.intermediate_dim = 128
         self.latent_dim = 2
         self.random_state = 42
         self.dataset_size = 10000
         self.list_files_name= []
         self.file_shuffle=[]
         self.test_size=0.25
-        self.res =  2048 # min 8
+        self.res =  64 # min 8
+        self.random_state = 42
+        self.filters = 16
+        self.kernel_size = 3
+        self.range_of_notes_to_extract = 16
+        self.number_of_data_to_extract = self.res * 2
 
         #path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
         path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
@@ -80,12 +85,28 @@ class Vae:
 
     def compile_model(self, data_to_plot_x):
         # network parameters
-        input_shape = (self.original_dim,)
+        input_shape = (self.number_of_data_to_extract,)
 
-        # VAE model = encoder + decoder
-        # build encoder model
+        # Convolutional VAE
+
+        # ENCODER
+        input_shape = (self.number_of_data_to_extract, self.range_of_notes_to_extract, 1)  # datasize
         inputs = Input(shape=input_shape, name='encoder_input')
-        x = Dense(self.intermediate_dim, activation='relu')(inputs)
+        x = inputs
+        for i in range(2):
+            self.filters *= 2
+            x = Conv2D(filters=self.filters,
+                       kernel_size=self.kernel_size,
+                       activation='relu',
+                       strides=2,
+                       padding='same')(x)
+
+        # shape info needed to build decoder model
+        shape = K.int_shape(x)
+
+        # generate latent vector Q(z|X)
+        x = Flatten()(x)
+        x = Dense(16, activation='relu')(x)
         z_mean = Dense(self.latent_dim, name='z_mean')(x)
         z_log_var = Dense(self.latent_dim, name='z_log_var')(x)
 
@@ -97,34 +118,51 @@ class Vae:
         encoder = Model(inputs, [z_mean, z_log_var, z], name='encoder')
         encoder.summary()
 
-
-        # build decoder model
+        # DECODER
         latent_inputs = Input(shape=(self.latent_dim,), name='z_sampling')
-        x = Dense(self.intermediate_dim, activation='relu')(latent_inputs)
-        outputs = Dense(self.original_dim, activation='sigmoid')(x)
+        x = Dense(shape[1] * shape[2] * shape[3], activation='relu')(latent_inputs)
+        x = Reshape((shape[1], shape[2], shape[3]))(x)
+
+        # use Conv2DTranspose to reverse the conv layers from the encoder
+        for i in range(2):
+            x = Conv2DTranspose(filters=self.filters,
+                                kernel_size=self.kernel_size,
+                                activation='relu',
+                                strides=2,
+                                padding='same')(x)
+            self.filters //= 2
+
+        outputs = Conv2DTranspose(filters=1,
+                                  kernel_size=self.kernel_size,
+                                  activation='sigmoid',
+                                  padding='same',
+                                  name='decoder_output')(x)
 
         # instantiate decoder model
         decoder = Model(latent_inputs, outputs, name='decoder')
         decoder.summary()
 
-        # instantiate VAE model
+        # Building the VAE
         outputs = decoder(encoder(inputs)[2])
-        vae = Model(inputs, outputs, name='vae_mlp')
+        vae = Model(inputs, outputs, name='vae')
 
-        models = (encoder, decoder)
+        # LOSS
+        use_mse = True
+        if use_mse:
+            reconstruction_loss = mse(K.flatten(inputs), K.flatten(outputs))
+        else:
+            reconstruction_loss = binary_crossentropy(K.flatten(inputs),
+                                                      K.flatten(outputs))
 
-        reconstruction_loss = mse(inputs, outputs)
-
-        # reconstruction_loss = binary_crossentropy(inputs,outputs)
-
-        reconstruction_loss *= self.original_dim
+        reconstruction_loss *= self.range_of_notes_to_extract * self.number_of_data_to_extract
         kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
         kl_loss = K.sum(kl_loss, axis=-1)
         kl_loss *= -0.5
         vae_loss = K.mean(reconstruction_loss + kl_loss)
         vae.add_loss(vae_loss)
-        opt = Adam(lr=0.0005)  # 0.001 was the default, so try a smaller one
-        vae.compile(optimizer=opt, metrics=['accuracy'])
+
+        # Compile the VAE
+        vae.compile(optimizer='rmsprop')
         vae.summary()
         return vae, encoder, decoder
 
@@ -135,7 +173,6 @@ class Vae:
         current_folder = 0
         num_files = 0
 
-        size = 465 * int(self.res / 8)
         for subdir, dirs, files in os.walk(path):
             for file in files:
                 if num_files < self.dataset_size:
@@ -146,78 +183,19 @@ class Vae:
                         for instrument in midi_data.instruments:
                             instrument.is_drum = False
                         if len(midi_data.instruments) > 0:
-                            data = midi_data.get_piano_roll(fs=self.res)[35:50, :]
-
-                            flattened = data.flatten()
-                            flattened = flattened.astype(dtype=bool)
-
-                            if data.size <= size:
-                                remaining_zero = size - data.size
-                                final_array = np.pad(flattened, (0, remaining_zero), mode='constant', constant_values=0)
-                                if np.count_nonzero(final_array) == 0:
-                                    print("0 IN DATASET")
-                                features.append([final_array, class_label])
-
-                            else:
-                                remaining_zero = data.size - size
-                                final_array = flattened[0:flattened.size - remaining_zero]
-                                if np.count_nonzero(final_array) == 0:
-                                    print("0 IN DATASET")
-                                features.append([final_array, class_label])
-                            # print(file)
-                            #self.list_files_name.insert(index_filename + num_files, file)
-                            self.list_files_name.append( file)
+                            data = midi_data.get_piano_roll(fs=self.res)[35:51, 0:self.number_of_data_to_extract].astype(
+                                dtype=bool)
+                            data = data.flatten()
+                            if data.size >= 16 * self.number_of_data_to_extract:
+                                features.append([data, class_label])
+                                self.list_files_name.insert(index_filename + num_files, file)
                             num_files += 1
                         # except:
                         #    print("An exception occurred")
             current_folder += 1
             print("Done ", num_files, " from ", current_folder, " folders on ", num_size)
 
-            featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
 
-            print('Finished feature extraction from ', len(featuresdf), ' files')
-
-
-            X = np.array(featuresdf.feature.tolist())
-            y = np.array(featuresdf.class_label.tolist())
-
-
-            data_to_plot_x = X
-            data_to_plot_y = y
-
-            return data_to_plot_x, data_to_plot_y
-
-    def load_data(self ,path, class_label, index_filename ):
-        features = []
-
-        size = 465 * int(self.res / 8)
-        # try:
-        midi_data = pretty_midi.PrettyMIDI(path)
-        for instrument in midi_data.instruments:
-            instrument.is_drum = False
-        if len(midi_data.instruments) > 0:
-            data = midi_data.get_piano_roll(fs=self.res)[35:50, :]
-            flattened = data.flatten()
-            flattened = flattened.astype(dtype=bool)
-
-            final_array = []
-            if data.size <= size:
-                remaining_zero = size - data.size
-                final_array = np.pad(flattened, (0, remaining_zero), mode='constant', constant_values=0)
-                if np.count_nonzero(final_array) == 0:
-                    print("0 IN DATASET")
-                features.append([final_array, class_label])
-            else:
-                remaining_zero = data.size - size
-                final_array = flattened[0:flattened.size - remaining_zero]
-                if np.count_nonzero(final_array) == 0:
-                    print("0 IN DATASET")
-                features.append([final_array, class_label])
-
-            #self.list_files_name=path
-
-        # except:
-        #    print("An exception occurred")
 
             # Convert into a Panda dataframe
             featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
@@ -230,10 +208,55 @@ class Vae:
             X = np.array(featuresdf.feature.tolist())
             y = np.array(featuresdf.class_label.tolist())
 
-            # print(X.shape, y.shape)
-            # split the dataset
+            print(X.shape, y.shape)
 
-            data_to_plot_x = X
+            X_shuffle = shuffle(X, random_state=self.random_state)
+            y_shuffle = shuffle(y, random_state=self.random_state)
+            file_shuffle = shuffle(self.list_files_name, random_state=self.random_state)
+
+            data_to_plot_x = np.reshape(X, [-1, self.number_of_data_to_extract, self.range_of_notes_to_extract, 1])
+
+            data_to_plot_y = y
+
+            return data_to_plot_x, data_to_plot_y
+
+    def load_data(self ,path, class_label, index_filename ):
+        features = []
+
+        midi_data = pretty_midi.PrettyMIDI(path)
+        for instrument in midi_data.instruments:
+            instrument.is_drum = False
+        if len(midi_data.instruments) > 0:
+            data = midi_data.get_piano_roll(fs=self.res)[35:51, 0:self.number_of_data_to_extract].astype(
+                dtype=bool)
+            data = data.flatten()
+            if data.size >= 16 * self.number_of_data_to_extract:
+                features.append([data, class_label])
+
+        # except:
+        #    print("An exception occurred")
+
+
+
+            # Convert into a Panda dataframe
+            featuresdf = pd.DataFrame(features, columns=['feature', 'class_label'])
+
+            print('Finished feature extraction from ', len(featuresdf), ' files')
+
+            # Convert features & labels into numpy arrays
+            listed_feature = featuresdf.feature.tolist()
+
+            X = np.array(featuresdf.feature.tolist())
+            y = np.array(featuresdf.class_label.tolist())
+
+            print(X.shape, y.shape)
+
+            X_shuffle = shuffle(X, random_state=self.random_state)
+            y_shuffle = shuffle(y, random_state=self.random_state)
+            file_shuffle = shuffle(self.list_files_name, random_state=self.random_state)
+
+            data_to_plot_x = np.reshape(X, [-1, self.number_of_data_to_extract, self.range_of_notes_to_extract, 1])
+
             data_to_plot_y = y
 
             return data_to_plot_x, data_to_plot_y
@@ -248,7 +271,7 @@ class Vae:
         y = coord[:, 1]
         # print(x,y)
 
-        distance = math.sqrt((( (-4) - x) ** 2) + ((4 - y) ** 2))
+        distance = math.sqrt((( (0) - x) ** 2) + ((0 - y) ** 2))
         # print(distance)
 
         return distance
