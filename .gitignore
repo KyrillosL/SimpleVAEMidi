@@ -7580,3 +7580,5 @@ from\ scratch/vae_mlp_mnist.h5
 unquantized_v2_temperature_algo_gen/__pycache__/
 
 *.h5
+
+Convolutional VAE/__pycache__/

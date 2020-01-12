@@ -18,12 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-from keras.layers import Lambda, Input, Dense
+from keras.layers import Lambda, Input, Dense, LSTM, RepeatVector, Conv2D
 from keras.models import Model
 from keras.datasets import mnist
 from keras.losses import mse, binary_crossentropy
 from keras.utils import plot_model
-from keras import backend as K
+from keras import backend as K, objectives
 from keras.optimizers import Adam
 import numpy as np
 import matplotlib.pyplot as plt
@@ -35,18 +35,21 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 from sklearn.utils import shuffle
+from keras.callbacks import EarlyStopping
 
-intermediate_dim = 512
-batch_size = 128
+intermediate_dim = 128
+batch_size = 32
 latent_dim = 2
-epochs = 10
+epochs = 100
 random_state = 42
-dataset_size = 10000
+dataset_size = 10
 list_files_name= []
 file_shuffle=[]
 test_size=0.25
-
-res =  2048 # min 8
+timesteps=1
+res =  8 # min 8
+filters = 16
+kernel_size = 3
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -99,9 +102,9 @@ def plot_results(models,
     #print(len(z_mean))
     nb_elem_per_class = dataset_size*test_size
 
-    to_decode = np.array([[0.5, 0], [1.8, 1]], dtype=np.float32)
-    final = decoder.predict(to_decode)
-    print(final )
+    #to_decode = np.array([[0.5, 0], [1.8, 1]], dtype=np.float32)
+    #final = decoder.predict(to_decode)
+    #print(final )
 
    # print("ICI ", file_shuffle[:int(dataset_size * test_size)])
     #for i, txt in enumerate(file_shuffle[ :int(dataset_size*2 * test_size)]):
@@ -206,11 +209,14 @@ original_dim = midi_file_size
 # network parameters
 input_shape = (original_dim, )
 
+#ORIGINAL MODEL.
+inputs = Input(shape=input_shape, name='encoder_input')
 
 # VAE model = encoder + decoder
 # build encoder model
-inputs = Input(shape=input_shape, name='encoder_input')
+
 x = Dense(intermediate_dim, activation='relu')(inputs)
+y = Dense(intermediate_dim, activation='relu')(x)
 z_mean = Dense(latent_dim, name='z_mean')(x)
 z_log_var = Dense(latent_dim, name='z_log_var')(x)
 
@@ -226,6 +232,7 @@ plot_model(encoder, to_file='vae_mlp_encoder.png', show_shapes=True)
 # build decoder model
 latent_inputs = Input(shape=(latent_dim,), name='z_sampling')
 x = Dense(intermediate_dim, activation='relu')(latent_inputs)
+y = Dense(intermediate_dim, activation='relu')(x)
 outputs = Dense(original_dim, activation='sigmoid')(x)
 
 # instantiate decoder model
@@ -238,6 +245,92 @@ plot_model(decoder, to_file='vae_mlp_decoder.png', show_shapes=True)
 # instantiate VAE model
 outputs = decoder(encoder(inputs)[2])
 vae = Model(inputs, outputs, name='vae_mlp')
+
+
+'''
+# LSTM encoding
+lstm_input = Input(shape=(timesteps, midi_file_size,))
+lstm = LSTM(intermediate_dim)(lstm_input)
+
+# VAE model = encoder + decoder
+# build encoder model
+
+z_mean = Dense(latent_dim, name='z_mean')(lstm)
+z_log_var = Dense(latent_dim, name='z_log_var')(lstm)
+
+# use reparameterization trick to push the sampling out as input
+# note that "output_shape" isn't necessary with the TensorFlow backend
+z = Lambda(sampling, output_shape=(latent_dim,), name='z')([z_mean, z_log_var])
+
+# build decoder model
+#latent_inputs = Input(shape=(latent_dim,), name='z_sampling')
+#x = Dense(intermediate_dim, activation='relu')(latent_inputs)
+
+decoder_h = LSTM(intermediate_dim, return_sequences=True)
+decoder_mean = LSTM(midi_file_size, return_sequences=True)
+h_decoded = RepeatVector(timesteps)(z)
+h_decoded = decoder_h(h_decoded)
+
+# decoded layer
+x_decoded_mean = decoder_mean(h_decoded)
+
+
+# instantiate VAE model
+#outputs = decoder(encoder(inputs)[2])
+#vae = Model(inputs, outputs, name='vae_mlp')
+vae = Model(lstm_input, x_decoded_mean)
+
+# instantiate encoder model
+encoder = Model(lstm_input,z_mean, name='encoder')
+encoder.summary()
+
+decoder_input = Input(shape=(latent_dim,))
+
+_h_decoded = RepeatVector(timesteps)(decoder_input)
+_h_decoded = decoder_h(_h_decoded)
+
+outputs = decoder_mean(_h_decoded)
+decoder = Model(decoder_input, outputs)
+
+decoder.summary()
+'''
+
+'''
+#Convolutional VAE
+
+inputs = Input(shape=input_shape, name='encoder_input')
+x = inputs
+for i in range(2):
+    filters *= 2
+    x = Conv2D(filters=filters,
+               kernel_size=kernel_size,
+               activation='relu',
+               strides=2,
+               padding='same')(x)
+
+# shape info needed to build decoder model
+shape = K.int_shape(x)
+
+# generate latent vector Q(z|X)
+x = Flatten()(x)
+x = Dense(16, activation='relu')(x)
+z_mean = Dense(latent_dim, name='z_mean')(x)
+z_log_var = Dense(latent_dim, name='z_log_var')(x)
+
+# use reparameterization trick to push the sampling out as input
+# note that "output_shape" isn't necessary with the TensorFlow backend
+z = Lambda(sampling, output_shape=(latent_dim,), name='z')([z_mean, z_log_var])
+
+# instantiate encoder model
+encoder = Model(inputs, [z_mean, z_log_var, z], name='encoder')
+encoder.summary()
+'''
+
+
+
+
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -252,16 +345,23 @@ if __name__ == '__main__':
     data = (x_test, y_test)
 
     # VAE loss = mse_loss or xent_loss + kl_loss
-    #if args.mse:
-    #reconstruction_loss = mse(inputs, outputs)
-    #else:
-    reconstruction_loss = binary_crossentropy(inputs,outputs)
+    reconstruction_loss = mse(inputs, outputs)
+    #reconstruction_loss = binary_crossentropy(inputs,outputs)
 
     reconstruction_loss *= original_dim
     kl_loss = 1 + z_log_var - K.square(z_mean) - K.exp(z_log_var)
     kl_loss = K.sum(kl_loss, axis=-1)
     kl_loss *= -0.5
     vae_loss = K.mean(reconstruction_loss + kl_loss)
+
+    # LSTM
+    '''
+    xent_loss = objectives.mse(lstm_input, outputs)
+    kl_loss = - 0.5 * K.mean(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var))
+    loss = xent_loss + kl_loss
+    vae.add_loss(loss)
+    '''
+
     vae.add_loss(vae_loss)
     opt = Adam(lr=0.0005)  # 0.001 was the default, so try a smaller one
     vae.compile(optimizer=opt,  metrics=['accuracy'])
@@ -274,13 +374,15 @@ if __name__ == '__main__':
         print("LOADING WEIGHTS")
         vae.load_weights(args.weights)
     else:
-
+        es = EarlyStopping(monitor='val_loss', mode='min', verbose=1)
         # train the autoencoder
+
         score=vae.fit(x_train,
                 epochs=epochs,
                 verbose=1,
                 batch_size=batch_size,
-                validation_data=(x_test, None))
+                validation_data=(x_test, None),
+                callbacks=[es])
         vae.save_weights('vae_mlp_mnist.h5')
 
         score2 = vae.evaluate(x_test, None, verbose=1)
