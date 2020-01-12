@@ -103,7 +103,7 @@ def plot_results(models,
     plt.colorbar()
     plt.xlabel("z[0]")
     plt.ylabel("z[1]")
-    plt.savefig(filename)
+    #plt.savefig(filename)
     #print(len(z_mean))
     nb_elem_per_class = dataset_size*test_size
 
@@ -129,7 +129,6 @@ def load_data(path, class_label, index_filename ):
     num_size = len(dirs)
     current_folder = 0
     num_files = 0
-
 
 
     for subdir, dirs, files in os.walk(path):
@@ -158,9 +157,11 @@ def load_data(path, class_label, index_filename ):
 print("LOADING DATA FOR TRAINING...")
 features = []
 
-path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/0"
-load_data(path_to_load, 0,   0)
-path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
+#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
+#load_data(path_to_load, 0,   0)
+#path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
+path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
+
 load_data(path_to_load,1,  dataset_size)
 
 # Convert into a Panda dataframe
@@ -252,6 +253,7 @@ outputs = Conv2DTranspose(filters=1,
 
 # instantiate decoder model
 decoder = Model(latent_inputs, outputs, name='decoder')
+
 decoder.summary()
 
 

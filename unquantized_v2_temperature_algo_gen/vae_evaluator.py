@@ -35,8 +35,8 @@ class Vae:
         self.test_size=0.25
         self.res =  2048 # min 8
 
-        #path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
-        path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
+        path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
+        #path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
         data_to_initialize_model = self.load_data(path_midi_file_to_initialize_model, 0, 2)
 
         self.original_dim = data_to_initialize_model[0].shape[1]
@@ -256,6 +256,12 @@ class Vae:
 
 
 
+    def generate(self):
+
+        z_sample = np.array([(0,0),(0,1)])#.astype(dtype=bool)
+        x_decoded = self.decoder.predict(z_sample)#.astype(dtype=bool)
+        #reshaped = x_decoded[0].reshape(16, self.)
+        print(x_decoded)
 
 
 

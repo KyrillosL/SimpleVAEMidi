@@ -40,17 +40,24 @@ class CVae:
         self.range_of_notes_to_extract = 16
         self.number_of_data_to_extract = self.res * 2
 
-        #path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
-        path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
+        path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
+        #path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
         data_to_initialize_model = self.load_data(path_midi_file_to_initialize_model, 0, 2)
 
         self.original_dim = data_to_initialize_model[0].shape[1]
 
         self.vae, self.encoder, self.decoder = self.compile_model(data_to_initialize_model)
 
-        weights = "vae_mlp_mnist.h5"
+        weights = "all_dataset.h5"
         print("LOADING WEIGHTS")
         self.vae.load_weights(weights)
+
+    def generate(self):
+
+        z_sample = np.array([(0,0),(0,1)])#.astype(dtype=bool)
+        x_decoded = self.decoder.predict(z_sample)#.astype(dtype=bool)
+        reshaped = x_decoded[0].reshape(16, self.number_of_data_to_extract)
+        print(x_decoded)
 
 
     def sampling(self,args):
