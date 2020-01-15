@@ -10,6 +10,7 @@ vae = cvae_evaluator.CVae()
 
 data = vae.load_data ("/Users/Cyril_Musique/Documents/Cours/M2/MuGen/output/1.mid" , 1, 0)
 
-vae.generate()
+to_convert = vae.generate(data[0])
+vae.convert_to_midi(to_convert)
 
 #print(vae.get_distance( "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/to_compare_0/random_1.mid" ))

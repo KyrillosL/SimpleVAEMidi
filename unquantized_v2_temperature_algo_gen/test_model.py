@@ -16,4 +16,5 @@ vae = vae_evaluator.Vae()
 
 data = vae.load_data ("/Users/Cyril_Musique/Documents/Cours/M2/MuGen/output/1.mid" , 1, 0)
 
-vae.generate()
+to_convert = vae.generate(data[0])
+vae.convert_to_midi(to_convert)

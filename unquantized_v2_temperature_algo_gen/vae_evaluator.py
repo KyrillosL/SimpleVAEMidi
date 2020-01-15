@@ -255,13 +255,57 @@ class Vae:
 
 
 
-
+    '''
     def generate(self):
 
+        z_sample = np.array(   [     (self.batch_size, 0), (0, 1)])
+
+        x_decoded = self.decoder.predict(z_sample, batch_size = self.batch_size)  # .astype(dtype=bool)
+        print(x_decoded)
+        
         z_sample = np.array([(0,0),(0,1)])#.astype(dtype=bool)
         x_decoded = self.decoder.predict(z_sample)#.astype(dtype=bool)
         #reshaped = x_decoded[0].reshape(16, self.)
-        print(x_decoded)
+        img = x_decoded[0].reshape(16, 1860 )
+        print(img)
 
+    '''
+
+    def generate(self, data):
+
+        #encoded = self.encoder.predict(data)
+        #print( "encoded", encoded)
+        z_sample = np.array([(0, 0), (0, 0)])
+        decoded = self.decoder.predict(z_sample)
+        print("decoded", decoded)
+        final = decoded[0]
+        final = final.reshape(1860,16).astype(dtype=bool) #self.number_of_data_to_extract, self.range_of_notes_to_extract
+
+        print("final", final)
+
+        return final
+
+    def convert_to_midi(self, piano_roll):
+        #piano_roll  = piano_roll[:, :, 0]
+        midi = pretty_midi.PrettyMIDI()
+        instrument = pretty_midi.Instrument(0)
+        midi.instruments.append(instrument)
+        padded_roll = np.pad(piano_roll, [(1, 1), (0, 0)], mode='constant')
+        changes = np.diff(padded_roll, axis=0)
+        notes = np.full(piano_roll.shape[1], -1, dtype=np.int)
+        for tick, pitch in zip(*np.where(changes)):
+            prev = notes[pitch]
+            if prev == -1:
+                notes[pitch] = tick
+                continue
+            notes[pitch] = -1
+            instrument.notes.append(pretty_midi.Note(
+                velocity=100,
+                pitch=pitch,
+                start=prev / float(self.res),
+                end=tick / float(self.res)))
+
+        midi.write("file.mid")
+        return midi
 
 
