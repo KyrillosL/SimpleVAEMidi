@@ -283,16 +283,27 @@ class Vae:
     def generate(self, data):
 
         encoded = self.encoder.predict(data)
-        #print( "encoded", encoded)
+        print( "encoded", encoded)
         z_sample = np.array([(0, 0), (0, 0)])
         decoded = self.decoder.predict(encoded)
         print("decoded", decoded)
         final = decoded[0]
-        final = final.reshape(31,15).astype(dtype=bool) #self.number_of_data_to_extract, self.range_of_notes_to_extract
 
-        print("final", final)
+        final2 = []
+        for x in final:
+            if x>0:
+                final2.append(True)
+            else:
+                final2.append(False)
+        print(final2)
+        npfinal=np.array(final2)
+        npfinal = npfinal.reshape(62,15)#.astype(dtype=bool) #self.number_of_data_to_extract, self.range_of_notes_to_extract
 
-        return final
+
+
+        print("final", final2)
+
+        return npfinal
 
     def convert_to_midi(self, piano_roll):
         #piano_roll  = piano_roll[:, :, 0]
