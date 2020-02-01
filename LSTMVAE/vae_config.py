@@ -1,12 +1,12 @@
 # General values
 BATCH_SIZE = 32
-ORIGINAL_DIM = 930  # 3072
+ORIGINAL_DIM = 496*15  # 3072
 LATENT_DIM = 4
 EPSILON_STD = 1.0
 NUMBER_EPOCHS = 100
 
 random_state = 42
-dataset_size = 10000
+dataset_size = 20
 list_files_name= []
 file_shuffle=[]
 test_size=0.25

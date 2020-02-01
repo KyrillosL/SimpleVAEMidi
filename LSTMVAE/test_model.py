@@ -8,7 +8,7 @@ vae = lstmvae_evaluator.Vae()
 
 #vae.get_coord(data, 128,False)
 
-data = vae.load_data ("/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100/generated_1.mid" , 1, 0)
+data = vae.load_data ("/home/kyrillos/CODE/VAEMIDI/16_bars/100/generated_1.mid" , 1, 0)
 
 to_convert = vae.generate(data[0])
 vae.convert_to_midi(to_convert)

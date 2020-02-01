@@ -157,9 +157,9 @@ def load_data(path, class_label, index_filename ):
 print("LOADING DATA FOR TRAINING...")
 features = []
 
-path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/0"
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/16_bars/0"
 load_data(path_to_load, 0,   0)
-path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/16_bars/100"
 load_data(path_to_load,1,  vae_config.dataset_size)
 
 # Convert into a Panda dataframe
