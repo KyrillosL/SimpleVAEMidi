@@ -7582,3 +7582,5 @@ unquantized_v2_temperature_algo_gen/__pycache__/
 *.h5
 
 Convolutional VAE/__pycache__/
+
+*.pyc

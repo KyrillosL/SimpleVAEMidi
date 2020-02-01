@@ -37,19 +37,7 @@ import pandas as pd
 from sklearn.utils import shuffle
 from keras.callbacks import EarlyStopping
 
-intermediate_dim = 128
-batch_size = 32
-latent_dim = 2
-epochs = 100
-random_state = 42
-dataset_size = 10
-list_files_name= []
-file_shuffle=[]
-test_size=0.25
-timesteps=1
-res =  8 # min 8
-filters = 16
-kernel_size = 3
+
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)

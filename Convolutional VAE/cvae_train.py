@@ -40,21 +40,21 @@ from keras.callbacks import EarlyStopping
 
 
 
-intermediate_dim = 128
+intermediate_dim = 256
 batch_size = 32
 latent_dim = 2
 epochs = 100
 random_state = 42
-dataset_size = 10000
+dataset_size = 5000
 list_files_name= []
 file_shuffle=[]
 test_size=0.25
 timesteps=1
-res =  64 # min 8
+res =  32 # min 8
 filters = 16
 kernel_size = 3
 range_of_notes_to_extract=16
-number_of_data_to_extract=res*2
+number_of_data_to_extract=res*16 #2=2bars
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample epsilon = N(0,I)
@@ -142,7 +142,7 @@ def load_data(path, class_label, index_filename ):
                         instrument.is_drum = False
                     if len(midi_data.instruments) > 0:
                         data = midi_data.get_piano_roll(fs=res)[35:51, 0:number_of_data_to_extract].astype(dtype=bool)
-                        data =data.flatten()
+                        #data =data.flatten()
                         if data.size>=16*number_of_data_to_extract:
                             features.append([data, class_label])
                             list_files_name.insert(index_filename+num_files, file)
@@ -157,10 +157,11 @@ def load_data(path, class_label, index_filename ):
 print("LOADING DATA FOR TRAINING...")
 features = []
 
-#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/0"
-#load_data(path_to_load, 0,   0)
-#path_to_load = "/home/kyrillos/CODE/VAEMIDI/quantized_rythm_dataset_v2_temperature/100"
-path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/quantized_rythm_dataset_v2_temperature/100"
+#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/16_bars/0"
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/16_bars/0"
+load_data(path_to_load, 0,   0)
+path_to_load = "/home/kyrillos/CODE/VAEMIDI/16_bars/100"
+#path_to_load = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/datasets/16_bars/100"
 
 load_data(path_to_load,1,  dataset_size)
 
@@ -185,8 +186,8 @@ y_shuffle = shuffle(y, random_state=random_state)
 file_shuffle = shuffle(list_files_name, random_state=random_state)
 
 
-x_train = np.reshape(x_train, [-1, number_of_data_to_extract, range_of_notes_to_extract, 1])
-x_test = np.reshape(x_test, [-1,number_of_data_to_extract, range_of_notes_to_extract, 1])
+x_train = np.reshape(x_train, [-1,  range_of_notes_to_extract,number_of_data_to_extract, 1])
+x_test = np.reshape(x_test, [-1, range_of_notes_to_extract,number_of_data_to_extract, 1])
 
 
 
@@ -202,7 +203,7 @@ input_shape = (number_of_data_to_extract,)
 #Convolutional VAE
 
 #ENCODER
-input_shape = (number_of_data_to_extract, range_of_notes_to_extract, 1) #datasize
+input_shape = ( range_of_notes_to_extract,number_of_data_to_extract, 1) #datasize
 inputs = Input(shape=input_shape, name='encoder_input')
 x = inputs
 for i in range(2):

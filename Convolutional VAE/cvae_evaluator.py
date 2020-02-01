@@ -26,47 +26,61 @@ class CVae:
         print("ici")
         self.epochs = 10
         self.batch_size = 32
-        self.intermediate_dim = 128
+        self.intermediate_dim = 256
         self.latent_dim = 2
         self.random_state = 42
         self.dataset_size = 10000
         self.list_files_name= []
         self.file_shuffle=[]
         self.test_size=0.25
-        self.res =  64 # min 8
+        self.res =  32 # min 8
         self.random_state = 42
         self.filters = 16
         self.kernel_size = 3
         self.range_of_notes_to_extract = 16
-        self.number_of_data_to_extract = self.res * 2
+        self.number_of_data_to_extract = self.res * 16 #16 bars
 
-        path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
+        #path_midi_file_to_initialize_model = "/Users/Cyril_Musique/Documents/Cours/M2/MuGen/ressources/file_to_load_model/example_midi_file.mid"
         #path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/MuGen-master/ressources/file_to_load_model/example_midi_file.mid"
+        path_midi_file_to_initialize_model = "/home/kyrillos/CODE/VAEMIDI/16_bars/100/generated_1.mid"
         data_to_initialize_model = self.load_data(path_midi_file_to_initialize_model, 0, 2)
 
         self.original_dim = data_to_initialize_model[0].shape[1]
 
         self.vae, self.encoder, self.decoder = self.compile_model(data_to_initialize_model)
 
-        weights = "all_dataset.h5"
+        weights = "vae_mlp_mnist.h5"
         print("LOADING WEIGHTS")
         self.vae.load_weights(weights)
 
     def generate(self, data):
 
-        #encoded = self.encoder.predict(data)
-        #print( "encoded", encoded)
-        z_sample = np.array([(0, 0), (0, 0)])
-        decoded = self.decoder.predict(z_sample)
+        encoded = self.encoder.predict(data)[0]
+        print( "encoded", encoded)
+        #z_sample = np.array([(0, 0), (0, 0)])
+        decoded = self.decoder.predict(encoded)
         print("decoded", decoded)
-        final = decoded[0].astype(dtype=bool) #.reshape(self.number_of_data_to_extract, self.range_of_notes_to_extract, 1).astype(dtype=bool)
+        final = decoded[0]
+        mean=np.mean(final)
 
-        print("final", final)
+        final2 = []
+        for note in final:
+            tmp=[]
+            for value in note:
+                if value >= mean:
+                    tmp.append(True)
+                else:
+                    tmp.append(False)
+            final2.append(tmp)
+        print(final2)
+        npfinal = np.array(final2)
+        npfinal= np.swapaxes(npfinal,0,1)
 
-        return final
+        return npfinal
+
 
     def convert_to_midi(self, piano_roll):
-        piano_roll  = piano_roll[:, :, 0]
+        #piano_roll  = piano_roll[:, :, 0]
         midi = pretty_midi.PrettyMIDI()
         instrument = pretty_midi.Instrument(0)
         midi.instruments.append(instrument)
@@ -101,13 +115,14 @@ class CVae:
         return z_mean + K.exp(0.5 * z_log_var) * epsilon
 
 
-    def get_coord(self,data_to_plot,batch_size=128, show_annotation=False):
+    def get_coord(self,data_to_plot, show_annotation=False):
 
-        data_to_plot_x,data_to_plot_y = data_to_plot
         # display a 2D plot of the digit classes in the latent space
-        z_mean, _, _ = self.encoder.predict(data_to_plot_x,batch_size=batch_size)
+        z_mean, _, _ = self.encoder.predict(data_to_plot,batch_size=self.batch_size)
+        z_mean=z_mean[0]
+        print(z_mean)
         plt.figure(figsize=(12, 10))
-        plt.scatter(z_mean[:, 0], z_mean[:, 1], c=data_to_plot_y)
+        plt.scatter(z_mean[0], z_mean[1])
         plt.colorbar()
         plt.xlabel("z[0]")
         plt.ylabel("z[1]")
@@ -129,7 +144,7 @@ class CVae:
         # Convolutional VAE
 
         # ENCODER
-        input_shape = (self.number_of_data_to_extract, self.range_of_notes_to_extract, 1)  # datasize
+        input_shape = (self.range_of_notes_to_extract, self.number_of_data_to_extract , 1)  # datasize
         inputs = Input(shape=input_shape, name='encoder_input')
         x = inputs
         for i in range(2):
@@ -268,7 +283,7 @@ class CVae:
         if len(midi_data.instruments) > 0:
             data = midi_data.get_piano_roll(fs=self.res)[35:51, 0:self.number_of_data_to_extract].astype(
                 dtype=bool)
-            data = data.flatten()
+            #data = data.flatten()
             if data.size >= 16 * self.number_of_data_to_extract:
                 features.append([data, class_label])
 
@@ -294,9 +309,10 @@ class CVae:
             y_shuffle = shuffle(y, random_state=self.random_state)
             file_shuffle = shuffle(self.list_files_name, random_state=self.random_state)
 
-            data_to_plot_x = np.reshape(X, [-1, self.number_of_data_to_extract, self.range_of_notes_to_extract, 1])
+            data_to_plot_x = np.reshape(X, [-1, self.range_of_notes_to_extract,self.number_of_data_to_extract, 1])
 
             data_to_plot_y = y
+            print("DATA ORIG:", data_to_plot_x)
 
             return data_to_plot_x, data_to_plot_y
 
